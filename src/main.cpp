@@ -54,21 +54,26 @@ struct Context {
     bool ParseArgs(std::string_view arg_string, OptType& opt_type) {
         void* erased = (void*)&opt_type;
         
-        std::vector<std::string_view> tokens = Split(arg_string, ' ');
+        tokens = Split(arg_string, ' ');
         std::vector<Tokens> arg_tokens;
-        for (size_t i = 0; i < tokens.size(); ++i) {
+        for (size_t i = 0; i < tokens.size();) {
             for (size_t j = i + 1; j < tokens.size(); ++j) {
                 if (tokens[j].starts_with("--")) {
-                    arg_tokens.push_back(Tokens(tokens.begin() + i, tokens.end() + (j - 1)));
+                    arg_tokens.push_back(Tokens(tokens.begin() + i, tokens.begin() + j));
                     i = j;
                     break;
                 }
             }
+
+            if (i == (tokens.size() - 1)) {
+                arg_tokens.push_back(Tokens(tokens.begin() + i, tokens.begin() + i + 1));
+                break;
+            }
         }
 
-        for (Tokens& tokens : arg_tokens) {
-            auto it = std::find_if(args.begin(), args.end(), [&](Argument const& arg) { return arg.name == tokens[0]; });
-            if (!it->parse_fun(tokens, erased)) {
+        for (Tokens& arg_token : arg_tokens) {
+            auto it = std::find_if(args.begin(), args.end(), [&](Argument const& arg) { return arg.name == arg_token[0]; });
+            if (!it->parse_fun(arg_token.subspan(1), erased)) {
                 return false;
             }
         }
@@ -77,6 +82,7 @@ struct Context {
     };
 
     std::span<Argument> args;
+    std::vector<std::string_view> tokens;
 };
 
 
